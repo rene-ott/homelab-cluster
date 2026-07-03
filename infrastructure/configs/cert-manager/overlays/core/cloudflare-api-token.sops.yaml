@@ -1,0 +1,36 @@
+# Cloudflare API token for cert-manager DNS-01 challenges.
+# Token must be scoped to: Zone:DNS:Edit + Zone:Zone:Read for your domain.
+# Create at: My Profile → API Tokens → Create Custom Token
+#
+# RULE: Fill the token locally, encrypt immediately, commit only the encrypted output.
+#       Never commit a plaintext token.
+#
+#   1. Set api-token below to your actual Cloudflare token.
+#   2. Encrypt in place (requires .sops.yaml at the repo root to have a real age1... recipient):
+#        ./scripts/sops-encryption.sh   # select "Encrypt" and pick this file
+#   3. Commit only the encrypted output — api-token will be SOPS ciphertext, not plaintext.
+#
+# Until a real token is filled, encrypted, and committed, cert-manager DNS-01 will fail — expected.
+apiVersion: v1
+kind: Secret
+metadata:
+    name: cloudflare-api-token
+    namespace: cert-manager
+type: Opaque
+stringData:
+    api-token: ENC[AES256_GCM,data:qcHSTxmGnUJzK4V4jCFzY8iYSbdt9ozBxbcQCV6na49rpnGRr9R0wRf8NVXmHxEiL/9VFWY=,iv:R/xcFIGbWYt6B6OeAwyO+xtFSq+J3YXw821G+4rHpLE=,tag:/tJooxqqw7fmTfN+E955MA==,type:str]
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBuQUNPK0kxZkZsK2tHZVJl
+            VUlFUHVUUC9aMVBaeGR6WUJiZjVycmRpTlJzCnlwbmQ2U1VlWkFlRmg1TWJRNU5t
+            SUN3RjEzcHN5c1VsNGxzMjNsUW9jVU0KLS0tIE1ZbjlBMHdMNWJGOFN6cmNKam5B
+            R1pvbUVHRkUxa1psV1NVUTlMWkQrNVEKnfsC/Z7W1ngF0iBszDVGLrN5jXCWzlFa
+            jkBPgxn7V3k/T+WeyB2YAfLIJqYAE7ohOANV7V0OVPVP/aA0AVW/Ag==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1fy42tcyrml0jzym648jk39hnkgkgxs427x8ynu7wcgxns2h2xddsnx35ve
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-06-24T20:28:22Z"
+    mac: ENC[AES256_GCM,data:x3GjFPjoRbRNwKNOrjyaNGfmYuXTT21VgfCLd22ZSFjwBqWKYIlI8nwVjN+GxcqupkJtN6EEOrF2mQy8hwC28CTXd56FThhm2uGGxQxy/6LwWv4wbRaEYI2r4h3IIfByIMnjrIFZw1R0UlqowRRWzshj/jgX9lothjjyP+s3RBg=,iv:oxau1+VxuWq6w+kBZ/XMIffHiHQ5JkRIZxfKPraFREY=,tag:gcvGNeRDTcWRe9HVMl/28Q==,type:str]
+    version: 3.13.1

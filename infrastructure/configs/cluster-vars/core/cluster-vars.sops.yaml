@@ -1,0 +1,35 @@
+# Cluster-wide substitution variables (domain, ACME email) consumed via
+# postBuild.substituteFrom by the Flux Kustomizations in clusters/core/.
+#
+# Kept as a SOPS-encrypted Secret (not a plaintext ConfigMap) so the real domain
+# and email aren't exposed if this repo is public.
+#
+# RULE: Fill the values below, encrypt immediately, commit only the encrypted output.
+#       Never commit plaintext.
+#
+#   ./scripts/sops-encryption.sh   # select "Encrypt" and pick this file
+#
+apiVersion: v1
+kind: Secret
+metadata:
+    name: cluster-vars
+    namespace: flux-system
+type: Opaque
+stringData:
+    domain_apps: ENC[AES256_GCM,data:977NY5dF4/BpI8B+bhPumA==,iv:DRGBfrc3vjfgM2VFMx20Ipp1V1Qy5PC5IR8w81j5OpU=,tag:1MVMFF7hT1rZ2SBFIu976A==,type:str]
+    letsencrypt_email: ENC[AES256_GCM,data:Cis5XRKAovy+jGJTQIs77yhc+vtu4wLe,iv:Y1kxj89+rVQwh5mzDOEhPYtcxhuHGzwEjJYSPdPr4eA=,tag:H7QERNUTUZyt5AUzrS8cMw==,type:str]
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBvTDc0S3RqMktWV0JCWVV1
+            SmtlQjloYml0cmJNSm0zS2FjVEFJbitZTmxrCnFYeTZVSVpIcjJwZDEwZS9NUkdV
+            WDVkbFcwdWNZbWthcFdYOTNST3BlVXMKLS0tIEVnR2txUCs5NUtiMVVyekFNTWxj
+            ZW4vV1JpT2M3SXYxWk5Ba1RXbWNwNW8KWIn0q25TJ/8Z3J63eZ4CTeVj+0FihOrH
+            49xKsblOqVjMXQ60VqCbgWpzGj3/pihlE82fuOmuB3Pbw59y1u8h0g==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1fy42tcyrml0jzym648jk39hnkgkgxs427x8ynu7wcgxns2h2xddsnx35ve
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-07-03T20:50:43Z"
+    mac: ENC[AES256_GCM,data:Xn1SLjfa0cb42GRpgkXN+kk2FZCz2LhXWBHn8CoRcjz4oGf9R2TUWX3GJCMJYJgEsbGxaHpdoXsh4bPc1uBQxrlkMSvUI/Pm846/tgPQMkqNLBYHsUveGkJ9pk6CIjVx5uOnb0RG+PTO9F4wgnkXWwMGc2vFKdPtvDYuv6eh/7Y=,iv:Up7EOSjQjKaOoHXGzJEmdmdyD4kjEmyVyAXDYqUwzcI=,tag:xRzytr83rwhyDtPmM+JdYA==,type:str]
+    version: 3.13.1

@@ -1,0 +1,22 @@
+# EXAMPLE ONLY — copy to cloudflare-api-token.sops.yaml, fill in your real token, then encrypt:
+#   cp infrastructure/configs/cert-manager/overlays/core/cloudflare-api-token.sops.yaml.example \
+#      infrastructure/configs/cert-manager/overlays/core/cloudflare-api-token.sops.yaml
+#   # Delete this comment block from the copy first — SOPS only encrypts
+#   # data/stringData values (see .sops.yaml's encrypted_regex), so comments stay
+#   # in plaintext forever and this "EXAMPLE ONLY" header would be misleading
+#   # left in the real, committed secret.
+#   ./scripts/sops.sh   # select "Encrypt" and pick the copied file
+#
+# Token must be scoped to: Zone:DNS:Edit + Zone:Zone:Read for your domain.
+# Create at: My Profile → API Tokens → Create Custom Token
+#
+# Kept as a plaintext template so the secret can be recreated from scratch if the
+# age private key is ever lost (see "lost private key" case in sops.sh Rotate).
+apiVersion: v1
+kind: Secret
+metadata:
+    name: cloudflare-api-token
+    namespace: cert-manager
+type: Opaque
+stringData:
+    api-token: REPLACE_ME

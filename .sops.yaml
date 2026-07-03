@@ -1,0 +1,14 @@
+# SOPS configuration for the homelab-cluster GitOps tree.
+# Kept at the repo root — SOPS walks up from the encrypted file and finds this config automatically.
+#
+# One-time setup:
+#   age-keygen -o ~/.homelab-secrets/age/homelab.agekey
+#   # Copy the "Public key:" line from the output into `age:` below.
+#   export SOPS_AGE_KEY_FILE=~/.homelab-secrets/age/homelab.agekey
+#
+# To encrypt or decrypt a secret file:
+#   ./scripts/sops.sh
+creation_rules:
+  - path_regex: .*\.sops\.ya?ml$
+    encrypted_regex: ^(data|stringData)$
+    age: age1fy42tcyrml0jzym648jk39hnkgkgxs427x8ynu7wcgxns2h2xddsnx35ve

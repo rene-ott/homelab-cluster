@@ -1,0 +1,23 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: headlamp
+  namespace: headlamp
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: headlamp.${domain_apps}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: headlamp
+                port:
+                  number: 80
+  tls:
+    - hosts:
+        - headlamp.${domain_apps}
+      secretName: apps-wildcard-tls

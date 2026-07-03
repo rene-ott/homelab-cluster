@@ -1,0 +1,20 @@
+# EXAMPLE ONLY — copy to cluster-vars.sops.yaml, fill in real values, then encrypt:
+#   cp infrastructure/configs/cluster-vars/core/cluster-vars.sops.yaml.example \
+#      infrastructure/configs/cluster-vars/core/cluster-vars.sops.yaml
+#   # Delete this comment block from the copy first — SOPS only encrypts
+#   # data/stringData values (see .sops.yaml's encrypted_regex), so comments stay
+#   # in plaintext forever and this "EXAMPLE ONLY" header would be misleading
+#   # left in the real, committed secret.
+#   ./scripts/sops.sh   # select "Encrypt" and pick the copied file
+#
+# Kept as a plaintext template so the secret can be recreated from scratch if the
+# age private key is ever lost (see "lost private key" case in sops.sh Rotate).
+apiVersion: v1
+kind: Secret
+metadata:
+    name: cluster-vars
+    namespace: flux-system
+type: Opaque
+stringData:
+    domain_apps: apps.example.com
+    letsencrypt_email: you@example.com
