@@ -14,8 +14,11 @@ spec:
     name: flux-system
   dependsOn:
     - name: cert-manager-configs
-    - name: cluster-vars
+    - name: cluster-vars-secret
+    - name: cluster-vars-public
   postBuild:
     substituteFrom:
       - kind: Secret
-        name: cluster-vars
+        name: cluster-vars-secret
+      - kind: ConfigMap
+        name: cluster-vars-public

@@ -23,14 +23,16 @@ homelab-cluster/
 │   ├── cert-manager-controllers.yaml # spec.path: ./infrastructure/controllers/cert-manager
 │   ├── cert-manager-configs-core.yaml # spec.path: ./infrastructure/configs/cert-manager/overlays/core
 │   ├── headlamp-core.yaml           # spec.path: ./apps/headlamp/overlays/core
-│   └── cluster-vars.yaml             # spec.path: ./infrastructure/configs/cluster-vars/core (decryption: sops)
+│   ├── cluster-vars-secret.yaml       # spec.path: ./infrastructure/configs/cluster-vars-secret/core (decryption: sops)
+│   └── cluster-vars-public.yaml       # spec.path: ./infrastructure/configs/cluster-vars-public/core (plaintext)
 └── infrastructure/                   # Platform add-ons
     ├── controllers/cert-manager/     # HelmRelease for the cert-manager controller
     └── configs/
         ├── cert-manager/
         │   ├── base/                 # ClusterIssuers
         │   └── overlays/core/       # SOPS-encrypted Cloudflare token Secret
-        └── cluster-vars/core/       # SOPS-encrypted Secret (domain_apps, letsencrypt_email)
+        ├── cluster-vars-secret/core/ # SOPS-encrypted Secret (domain_apps, letsencrypt_email — hidden, public repo)
+        └── cluster-vars-public/core/ # Plaintext ConfigMap (cert_issuer — non-sensitive, freely diffable)
 ```
 
 Flux's own generated manifests (`clusters/core/flux-system/`) are created and managed by
@@ -92,7 +94,7 @@ can edit multiple files in one run:
   ever drift apart on their own (hand-edited `.sops.yaml`, reverted commit, restored key backup).
 
 Every `*.sops.yaml` secret has a matching plaintext `*.sops.yaml.example` template committed next
-to it (e.g. `cluster-vars.sops.yaml.example`) so it can be recreated from scratch if the age
+to it (e.g. `cluster-vars-secret.sops.yaml.example`) so it can be recreated from scratch if the age
 private key is ever lost.
 
 The Flux Kustomization that consumes the secret must have:
