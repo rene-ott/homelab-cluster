@@ -1,0 +1,104 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: jellyfin
+  namespace: jellyfin
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: app-template
+      version: "3.7.3"
+      sourceRef:
+        kind: OCIRepository
+        name: app-template
+  values:
+    controllers:
+      jellyfin:
+        containers:
+          main:
+            image:
+              repository: jellyfin/jellyfin
+              tag: "10.11.10"
+            securityContext:
+              # Fixed app UID/GID, not fsGroup-derived — every app in this
+              # cluster picks its own UID/GID (Grafana is 472, this is 1000)
+              # rather than sharing one baked-in value.
+              runAsUser: 1000
+              runAsGroup: 1000
+
+        initContainers:
+          # DirectoryOrCreate leaves /config and /cache root:root on first
+          # deploy. Fix ownership once, top-level only (no -R): a recursive
+          # chown would walk the whole media-adjacent cache/config tree on
+          # every pod restart. fsGroup is not used here because it's a no-op
+          # on hostPath volumes. This container must stay root to chown into
+          # 1000:1000; the main container still runs unprivileged.
+          init-chown:
+            image:
+              repository: busybox
+              tag: "1.37"
+            command:
+              - sh
+              - -c
+              - chown 1000:1000 /config /cache
+
+    service:
+      main:
+        controller: jellyfin
+        ports:
+          http:
+            port: 8096
+
+    persistence:
+      # Persistent app state (watched libraries, users, metadata). Backed up;
+      # kept separate from cache below so backups don't churn on regenerable
+      # data. hostPath (not a PVC) so this directory survives a full k3s
+      # teardown/reinstall — the path is the contract, whatever disk backs
+      # /srv/config is a host concern.
+      config:
+        type: hostPath
+        hostPath: /srv/config/jellyfin
+        # Self-provisioned by the app on first deploy.
+        hostPathType: DirectoryOrCreate
+        globalMounts:
+          - path: /config
+
+      # Disposable: transcode temp + image cache. Split from /config so it
+      # can be excluded from backups; safe to wipe at any time.
+      cache:
+        type: hostPath
+        hostPath: /srv/cache/jellyfin
+        hostPathType: DirectoryOrCreate
+        globalMounts:
+          - path: /cache
+
+      # Shared media root (movies/tv/music), provisioned by Ansible as a
+      # generic host directory. type: Directory (not DirectoryOrCreate) so a
+      # missing/misconfigured host root fails loudly instead of silently
+      # mounting an empty directory. Mounted read-only for Jellyfin; other
+      # apps (Sonarr/Radarr) will mount this same path read-write later —
+      # readOnly is a per-app decision, not baked in here.
+      media:
+        type: hostPath
+        hostPath: /srv/media
+        hostPathType: Directory
+        advancedMounts:
+          jellyfin:
+            main:
+              - path: /media
+                readOnly: true
+
+      # Optional Intel iGPU passthrough for hardware transcoding. Uncomment
+      # once the host has /dev/dri and add the host's render/video group GID
+      # to containers.main.securityContext.supplementalGroups so UID 1000 can
+      # open the device nodes.
+      # dri:
+      #   type: hostPath
+      #   hostPath: /dev/dri
+      #   hostPathType: Directory
+      #   advancedMounts:
+      #     jellyfin:
+      #       main:
+      #         - path: /dev/dri
