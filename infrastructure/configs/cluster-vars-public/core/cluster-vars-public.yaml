@@ -5,4 +5,4 @@ metadata:
   name: cluster-vars-public
   namespace: flux-system
 data:
-  cert_issuer: letsencrypt-staging
+  cert_issuer: letsencrypt-prod
