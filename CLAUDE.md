@@ -43,6 +43,14 @@ additional context.
 
 Do not record completed implementation detail in `TASKS.md`; use git commits for shipped history.
 
+`## Now` tracks only this repo's in-flight, not-yet-committed work. Shipped work lives in git,
+never in `## Now`. If a commit is explicitly requested and performed, clear the shipped item from
+`TASKS.md`'s `## Now` back to its nothing-in-flight placeholder in that same commit. If no commit
+is performed, leave `## Now` unchanged and report that it should be cleared as part of the eventual
+commit. Cross-repo or external follow-ups (for example, the `homelab-host` Flux bootstrap for a new
+cluster) are not this repo's in-flight work and never belong in `## Now`; surface them to the user
+instead.
+
 Do not create additional task files, changelogs, architecture docs, migration plans, TODO
 inventories, or other planning documents unless the human explicitly asks. Broader host/platform
 documentation lives in the companion `homelab-host` repo.
@@ -59,7 +67,10 @@ Use four phases:
 1. **Scope** — summarize the task, in-scope work, out-of-scope work, likely files, safe order, and validation.
 2. **Implement** — make the smallest coherent GitOps change.
 3. **Review** — inspect the diff for Flux, Kustomize, SOPS, ingress, and scope issues.
-4. **Close** — after validation or Flux reconciliation, suggest a commit message and any cleanup.
+4. **Close** — after validation or Flux reconciliation, suggest a commit message and note any
+   cleanup. If a commit is explicitly requested and performed, clear the shipped item from
+   `TASKS.md`'s `## Now` in that same commit. If no commit is performed, leave `## Now` unchanged
+   and report that it should be cleared as part of the eventual commit.
 
 Project commands for each phase: `/scope`, `/implement`, `/review-task`, `/close`
 
