@@ -1,127 +1,188 @@
 # CLAUDE.md — homelab-cluster
 
-Guidance for Claude Code in this repo — the Flux GitOps tree for the homelab K3s cluster.
+Guidance for Claude Code in this repo. This is the Flux GitOps tree for the homelab K3s cluster.
 
 ## Repo Purpose
 
 `homelab-cluster` is the standalone GitOps repository watched by Flux CD running inside K3s.
-It contains only K8s manifests and Helm releases. The K3s platform (Debian server config + K3s +
-Flux bootstrap) lives in the companion **`homelab-host`** Ansible repo — that repo is what points
-Flux at this one.
+
+It contains Kubernetes manifests, Helm releases, Flux Kustomizations, and SOPS-encrypted runtime
+secrets. The K3s platform itself — Debian server config, K3s installation, and Flux bootstrap —
+lives in the companion `homelab-host` Ansible repo.
+
+This repo does not install K3s, configure the host OS, open firewall ports, or bootstrap Flux.
+It only declares what Flux should reconcile after bootstrap.
 
 ## Repo Layout
 
-```
-homelab-cluster/
-├── .sops.yaml                        # SOPS age recipient for encrypting *.sops.yaml secrets
-├── scripts/sops.sh                   # Interactive: encrypt/decrypt/edit/rotate a *.sops.yaml file
-├── apps/                             # Flux-managed application workloads
-│   └── headlamp/
-│       ├── base/                     # HelmRelease, HelmRepository, Namespace
-│       └── overlays/core/           # ingress, certificate — environment-specific layer
-├── clusters/core/                   # Flux Kustomization entry points (Flux reads this dir)
-│   ├── cert-manager-controllers.yaml # spec.path: ./infrastructure/controllers/cert-manager
-│   ├── cert-manager-configs-core.yaml # spec.path: ./infrastructure/configs/cert-manager/overlays/core
-│   ├── headlamp-core.yaml           # spec.path: ./apps/headlamp/overlays/core
-│   ├── cluster-vars-secret.yaml       # spec.path: ./infrastructure/configs/cluster-vars-secret/core (decryption: sops)
-│   └── cluster-vars-public.yaml       # spec.path: ./infrastructure/configs/cluster-vars-public/core (plaintext)
-└── infrastructure/                   # Platform add-ons
-    ├── controllers/cert-manager/     # HelmRelease for the cert-manager controller
-    └── configs/
-        ├── cert-manager/
-        │   ├── base/                 # ClusterIssuers
-        │   └── overlays/core/       # SOPS-encrypted Cloudflare token Secret
-        ├── cluster-vars-secret/core/ # SOPS-encrypted Secret (domain_apps, letsencrypt_email — hidden, public repo)
-        └── cluster-vars-public/core/ # Plaintext ConfigMap (cert_issuer — non-sensitive, freely diffable)
-```
+- `.sops.yaml` — SOPS age recipient for encrypting `*.sops.yaml` secrets
+- `scripts/sops.sh` — interactive helper: encrypt, decrypt, edit, and rotate secret files, plus
+  "Update Key" to sync `.sops.yaml`'s age recipient to the on-disk private key
+- `apps/` — Flux-managed application workloads
+- `clusters/core/` — Flux Kustomization entry points; Flux reads this directory
+- `infrastructure/controllers/` — platform controllers such as cert-manager
+- `infrastructure/configs/` — platform configuration such as ClusterIssuers, cluster vars, and encrypted runtime secrets
+- `TASKS.md` — living Now/Next/Someday task tracker for this repo
 
-Flux's own generated manifests (`clusters/core/flux-system/`) are created and managed by
-`flux bootstrap git` from `homelab-host` — they are never hand-edited and are gitignored if you
-run bootstrap on a fresh clone.
+Flux-generated manifests under `clusters/core/flux-system/` are created and managed by
+`flux bootstrap git` from `homelab-host`. Do not hand-edit them.
 
-## Deploying Apps
+## Task Source
 
-Add a `HelmRelease`/manifest under `apps/`, wire it up with a Flux Kustomization in
-`clusters/core/`, commit, and Flux CD syncs the cluster. No `kubectl`/`helm` by hand.
+`TASKS.md` at the repo root is the living plan: **Now** = the one thing in flight, **Next** =
+ordered shortlist, **Someday** = unordered ideas. Shipped history lives in git — no changelogs
+or status files.
 
-### App checklist
+Use the user's current request as the primary task source. If the user explicitly provides or
+references a task file, branch note, issue, or companion repo plan, use that as additional
+context.
 
-- `apps/<name>/base/` — `Namespace`, `HelmRepository`, `HelmRelease`, `kustomization.yaml`
-- `apps/<name>/overlays/core/` — ingress, certificate, env-specific patches, `kustomization.yaml`
-- `clusters/core/<name>-core.yaml` — Flux `Kustomization` with `spec.path: ./apps/<name>/overlays/core`
-  and `dependsOn` / `postBuild.substituteFrom` as needed
+Do not create additional task files, changelogs, architecture docs, migration plans, TODO
+inventories, or other planning documents unless the human explicitly asks. Broader architecture
+docs live in the companion `homelab-host` repo under `docs/`.
 
-## SOPS Secrets
+## Claude Code Operating Mode
 
-`.sops.yaml` at the repo root configures SOPS to encrypt/decrypt `*.sops.yaml` files using the
-homelab age key at `~/.homelab-secrets/age/homelab.agekey`. The age public key must be committed
-in `.sops.yaml`; the private key never leaves the workstation and is injected into the cluster
-as `flux-system/sops-age` by the `homelab-host` Ansible `flux_bootstrap` role.
+Work in small, bounded passes.
 
-To add a new encrypted secret:
+Use Claude Code's built-in plan mode before implementation when the task is non-trivial. In plan
+mode, do not edit files.
 
-```bash
-# Fill the plaintext value, then encrypt immediately:
-./scripts/sops.sh
-# select "Encrypt" and pick the file
-# Commit only the encrypted output — never commit a plaintext secret
-```
+Use four phases:
 
-To view a secret's decrypted value (prints to stdout only, never writes plaintext to disk):
+1. **Scope** — summarize the task, in-scope work, out-of-scope work, likely files, safe order, and validation.
+2. **Implement** — make the smallest coherent GitOps change.
+3. **Review** — inspect the diff for Flux, Kustomize, SOPS, ingress, and scope issues.
+4. **Close** — after validation or Flux reconciliation, suggest a commit message and any cleanup.
 
-```bash
-./scripts/sops.sh
-# select "Decrypt" and pick the file
-```
+Do not commit, create plaintext secrets, run manual `kubectl` or `helm` mutation commands, or start
+the next task unless explicitly asked.
 
-To edit a secret's value, use the script's "Edit" action — it runs `sops <file>` under the hood,
-which decrypts to a temp buffer, opens `$EDITOR`, and re-encrypts back in place on save, without
-ever leaving plaintext at the real path. It loops back to the file picker after each save so you
-can edit multiple files in one run:
-
-```bash
-./scripts/sops.sh
-# select "Edit", pick a file, save+quit your editor, repeat or select "Done"
-```
-
-`scripts/sops.sh` also has two more actions:
-- **Rotate** — re-encrypts every `*.sops.yaml` file for a new age key. If the old private key is
-  still available it re-wraps the existing ciphertext; if not, it restores the plaintext
-  `*.sops.yaml.example` templates (see below) so secrets can be refilled and re-encrypted from
-  scratch. Either way it syncs `.sops.yaml`'s `age:` recipient to match.
-- **Update Key** — syncs just `.sops.yaml`'s `age:` recipient to whatever private key currently
-  exists on disk, without touching any secret file. Useful if `.sops.yaml` and the workstation key
-  ever drift apart on their own (hand-edited `.sops.yaml`, reverted commit, restored key backup).
-
-Every `*.sops.yaml` secret has a matching plaintext `*.sops.yaml.example` template committed next
-to it (e.g. `cluster-vars-secret.sops.yaml.example`) so it can be recreated from scratch if the age
-private key is ever lost.
-
-The Flux Kustomization that consumes the secret must have:
-```yaml
-decryption:
-  provider: sops
-  secretRef:
-    name: sops-age
-```
+Commit messages must not contain `Co-Authored-By`, Claude references, AI attribution, or any other
+AI-attribution trailer.
 
 ## Key Rules
 
-1. **No plain-text secrets in repo.** Encrypt with SOPS before committing. The only secrets here
-   are encrypted `*.sops.yaml` files.
-2. **No `kubectl`/`helm` by hand.** All changes go through a git commit → Flux reconcile.
-3. **`spec.path` values are repo-root-relative** (e.g. `./apps/headlamp/overlays/core`).
+1. **No plaintext secrets in repo.** Encrypt runtime secrets with SOPS before committing. The only
+   secrets here are encrypted `*.sops.yaml` files.
+
+2. **No manual `kubectl` or `helm` mutation workflow.** Desired state changes go through git and
+   Flux reconciliation. Read-only inspection commands are acceptable when the human asks or during
+   verification.
+
+3. **`spec.path` values are repo-root-relative.** Use paths such as
+   `./apps/headlamp/overlays/core`, not paths relative to the manifest file.
+
 4. **`clusters/core/` is the Flux entry point.** Flux's root Kustomization points at
-   `./clusters/core`; add a new Flux `Kustomization` manifest there for each new workload.
-5. **Bootstrap is external.** Flux CD is bootstrapped by `homelab-host` (`flux_auth` +
-   `flux_bootstrap` Ansible roles). When re-bootstrapping, delete `clusters/core/flux-system/`
-   so Flux regenerates it for the correct repo URL.
-6. **No `Co-Authored-By: Claude` trailer on commits.** Do not append it to commit messages in
-   this repo.
+   `./clusters/core`. Add or update a Flux `Kustomization` manifest there for each workload or
+   infrastructure component that Flux should reconcile.
 
-## Docs
+5. **Every app must be reachable from `clusters/core/`.** Adding files under `apps/` is not enough.
+   A Flux `Kustomization` in `clusters/core/` must point to the app overlay.
 
-Planning and architecture docs live in the companion `homelab-host` repo under `docs/`:
-- `docs/architecture.md` — system design, port list, Flux bootstrap flow, secrets model
-- `docs/planning/TASKS.md` — living Now/Next/Someday plan (tracks cluster app work too)
-- `docs/planning/LOG.md` — one line per shipped change
+6. **Use base/overlay separation.** Shared app resources live in `apps/<name>/base/`. Environment
+   specifics such as ingress, certificates, patches, and substitutions live in
+   `apps/<name>/overlays/core/`.
+
+7. **Bootstrap is external.** Flux CD is bootstrapped by `homelab-host` using its `flux_auth` and
+   `flux_bootstrap` Ansible roles. This repo does not own the bootstrap workflow.
+
+8. **Flux-generated files are not hand-edited.** Do not manually edit `clusters/core/flux-system/`.
+   If Flux must be re-bootstrapped, handle that from `homelab-host`.
+
+9. **SOPS files need examples.** Every committed `*.sops.yaml` secret should have a matching
+   plaintext `*.sops.yaml.example` template with dummy values so the secret can be recreated if the
+   age private key is lost.
+
+10. **No AI attribution in commits.** Do not add `Co-Authored-By`, Claude references, AI
+    attribution, or AI trailers to commit messages.
+
+## App Pattern
+
+A typical app should have:
+
+- `apps/<name>/base/namespace.yaml`
+- `apps/<name>/base/repository.yaml` — the `HelmRepository`
+- `apps/<name>/base/release.yaml` — the `HelmRelease`
+- `apps/<name>/base/kustomization.yaml`
+- `apps/<name>/overlays/core/kustomization.yaml`
+- `apps/<name>/overlays/core/ingress.yaml` if exposed through Traefik
+- `apps/<name>/overlays/core/certificate.yaml` if it needs a dedicated certificate
+- `clusters/core/<name>-core.yaml`
+
+Use `dependsOn` in the Flux `Kustomization` when the app depends on controllers, configs, secrets,
+or other reconciled resources.
+
+Use `postBuild.substituteFrom` when manifests consume cluster variables from ConfigMaps or Secrets.
+
+If a Flux `Kustomization` consumes SOPS-encrypted files, include:
+
+- `decryption.provider: sops`
+- `decryption.secretRef.name: sops-age`
+
+## Infrastructure Pattern
+
+Use `infrastructure/controllers/` for installed controllers, such as cert-manager.
+
+Use `infrastructure/configs/` for configuration consumed by those controllers or shared by apps,
+such as ClusterIssuers, cluster variables, or encrypted runtime secrets.
+
+Controllers and configs should be wired through `clusters/core/` as separate Flux
+`Kustomization` manifests when ordering matters.
+
+## SOPS Secrets
+
+`.sops.yaml` at the repo root configures SOPS to encrypt and decrypt `*.sops.yaml` files using the
+homelab age recipient.
+
+The age public key is committed in `.sops.yaml`. The private key never belongs in this repo. It
+lives on the workstation and is injected into the cluster as `flux-system/sops-age` by
+`homelab-host`.
+
+To add or edit encrypted secrets, use `scripts/sops.sh`.
+
+Commit only encrypted secret files and dummy example templates. Never commit plaintext secret
+values.
+
+Every real SOPS secret should have a matching example file next to it:
+
+- real encrypted file: `name.sops.yaml`
+- dummy template: `name.sops.yaml.example`
+
+The example file must not contain real secrets.
+
+## Validation
+
+Prefer local structural validation before committing.
+
+Useful checks:
+
+- `git diff --check`
+- inspect changed `kustomization.yaml` files
+- build changed overlays with `kustomize build` when available
+- inspect SOPS files for accidental plaintext
+- after Flux sync, use read-only Flux or kubectl inspection commands if needed
+
+Read-only live checks are acceptable. Mutation should still go through git and Flux.
+
+## Useful Commands
+
+Local checks:
+
+- `git diff --check`
+- `find apps infrastructure clusters -name kustomization.yaml -print`
+- `kustomize build apps/<name>/overlays/core`
+- `kustomize build infrastructure/configs/cert-manager/overlays/core`
+
+SOPS helper:
+
+- `./scripts/sops.sh`
+
+Read-only live checks after commit and Flux reconciliation:
+
+- `flux get kustomizations`
+- `flux get helmreleases -A`
+- `kubectl get kustomizations -A`
+- `kubectl get helmreleases -A`
+
+Do not use `kubectl apply`, `kubectl edit`, `helm install`, or `helm upgrade` as the normal workflow.
