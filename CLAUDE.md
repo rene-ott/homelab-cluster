@@ -29,17 +29,22 @@ Flux-generated manifests under `clusters/core/flux-system/` are created and mana
 
 ## Task Source
 
-`TASKS.md` at the repo root is the living plan: **Now** = the one thing in flight, **Next** =
-ordered shortlist, **Someday** = unordered ideas. Shipped history lives in git — no changelogs
-or status files.
+## Task Source
 
-Use the user's current request as the primary task source. If the user explicitly provides or
-references a task file, branch note, issue, or companion repo plan, use that as additional
-context.
+`TASKS.md` at the repo root is the living plan: **Now** = the one thing in flight, **Next** =
+ordered shortlist, **Someday** = unordered ideas and parked future notes. Shipped history lives in
+git — no changelogs or status files.
+
+Use the current `## Now` item as the default task source. If the user gives a more specific request
+in the current conversation, that request takes precedence for the current pass. If the user
+explicitly provides or references a branch note, issue, or companion repo plan, use that as
+additional context.
+
+Do not record completed implementation detail in `TASKS.md`; use git commits for shipped history.
 
 Do not create additional task files, changelogs, architecture docs, migration plans, TODO
-inventories, or other planning documents unless the human explicitly asks. Broader architecture
-docs live in the companion `homelab-host` repo under `docs/`.
+inventories, or other planning documents unless the human explicitly asks. Broader host/platform
+documentation lives in the companion `homelab-host` repo.
 
 ## Claude Code Operating Mode
 
@@ -55,7 +60,7 @@ Use four phases:
 3. **Review** — inspect the diff for Flux, Kustomize, SOPS, ingress, and scope issues.
 4. **Close** — after validation or Flux reconciliation, suggest a commit message and any cleanup.
 
-Project commands for each phase: `/scope`, `/implement`, `/review`, `/close`
+Project commands for each phase: `/scope`, `/implement`, `/review-task`, `/close`
 
 Do not commit, create plaintext secrets, run manual `kubectl` or `helm` mutation commands, or start
 the next task unless explicitly asked.
