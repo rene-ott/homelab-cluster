@@ -6,12 +6,7 @@ commit → clear Now. No status fields, no per-task files — history is git log
 
 ## Now
 
-- **Add `core-stg` staging cluster** — separate physical K3s cluster with its own Flux entrypoint at
-  `clusters/core-stg/`, reusing renamed `apps/*/overlays/shared` overlays. Per-cluster
-  `cluster-vars-{public,secret}/core-stg` set `cert_issuer: letsencrypt-staging` and a distinct
-  staging `domain_apps` (kept in the encrypted secret, not here); single shared age key. Manifests +
-  encrypted secret are in place and validate locally. Remaining is external: Flux bootstrap
-  (`--path=clusters/core-stg`) and `sops-age` injection happen in `homelab-host`.
+_(nothing in flight)_
 
 ## Next
 
