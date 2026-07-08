@@ -55,6 +55,8 @@ Use four phases:
 3. **Review** — inspect the diff for Flux, Kustomize, SOPS, ingress, and scope issues.
 4. **Close** — after validation or Flux reconciliation, suggest a commit message and any cleanup.
 
+Project commands for each phase: `/scope`, `/implement`, `/review`, `/close`
+
 Do not commit, create plaintext secrets, run manual `kubectl` or `helm` mutation commands, or start
 the next task unless explicitly asked.
 

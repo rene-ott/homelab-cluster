@@ -10,9 +10,7 @@ _(nothing in flight)_
 
 ## Next
 
-- **Create `.claude/commands/` project commands** — add `scope.md`, `implement.md`, `review.md`,
-  and `close.md` command files matching the four-phase operating mode described in CLAUDE.md,
-  then reference them from CLAUDE.md once they exist.
+_(nothing queued yet)_
 
 ## Someday
 
