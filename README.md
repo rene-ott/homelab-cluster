@@ -4,9 +4,15 @@ Flux CD GitOps tree for the homelab K3s cluster.
 
 | Folder | Contents |
 |--------|---------|
-| `apps/` | Application workloads (HelmRelease + ingress + certificates) |
-| `clusters/core/` | Flux Kustomization entry points — Flux reads this directory |
-| `infrastructure/` | Platform add-ons (cert-manager controller + configs) |
+| `apps/` | Application workloads (HelmRelease + ingress + certificates); `overlays/shared/` is reused by every cluster |
+| `clusters/<cluster>/` | Per-cluster Flux Kustomization entry points — each cluster's Flux reads its own directory (`clusters/core/`, `clusters/core-stg/`) |
+| `infrastructure/` | Platform add-ons (cert-manager controller + configs) and per-cluster variable sets |
+
+Each physical cluster runs its own Flux, bootstrapped separately by `homelab-host` against its own
+`clusters/<cluster>/` path. `core` is the production cluster; `core-stg` is the staging cluster,
+identical except it uses the `letsencrypt-staging` issuer and a distinct `domain_apps`. What differs
+between clusters lives entirely in `infrastructure/configs/cluster-vars-{public,secret}/<cluster>/`;
+the app and cert-manager overlays are shared and fully parameterized.
 
 Flux running inside K3s watches this repo and applies changes automatically. To deploy or change
 an app, commit a manifest here and Flux will sync it.
@@ -17,9 +23,12 @@ The K3s platform (Debian server config, K3s install, Flux bootstrap) is managed 
 ## Adding an app
 
 1. Create `apps/<name>/base/` with `Namespace`, `HelmRepository`, `HelmRelease`, `kustomization.yaml`.
-2. Create `apps/<name>/overlays/core/` with ingress, certificate, and `kustomization.yaml`.
-3. Add `clusters/core/<name>-core.yaml` — a Flux `Kustomization` with
-   `spec.path: ./apps/<name>/overlays/core`.
+2. Create `apps/<name>/overlays/shared/` with ingress, certificate, and `kustomization.yaml`.
+   Parameterize per-cluster values with `${domain_apps}` and `${cert_issuer}` so the overlay is
+   reused by every cluster.
+3. Add a Flux `Kustomization` for each cluster that should run the app, with
+   `spec.path: ./apps/<name>/overlays/shared` — e.g. `clusters/core/<name>-core.yaml` and
+   `clusters/core-stg/<name>-core-stg.yaml`.
 4. Commit and push — Flux reconciles automatically.
 
 ## Secrets

@@ -18,7 +18,7 @@ Inspect the diff and report:
 2. Any scope creep
 3. Any violation of `CLAUDE.md`
 4. Any Kustomize path or `spec.path` issue
-5. Any missing `clusters/core/` Flux Kustomization wiring
+5. Any missing `clusters/<cluster>/` Flux Kustomization wiring (`clusters/core/`, `clusters/core-stg/`)
 6. Any missing `kustomization.yaml`
 7. Any missing `dependsOn`
 8. Any missing or incorrect `postBuild.substituteFrom`
@@ -31,13 +31,13 @@ Inspect the diff and report:
 Pay special attention to:
 
 - `spec.path` values must be repo-root-relative
-- Flux entry points belong in `clusters/core/`
+- Flux entry points belong in `clusters/<cluster>/` (`clusters/core/`, `clusters/core-stg/`)
 - apps belong under `apps/`
 - platform controllers and configs belong under `infrastructure/`
 - Kubernetes runtime secrets must be SOPS-encrypted
 - `.sops.yaml` must contain the public age recipient only
 - the private age key must never be committed
-- `clusters/core/flux-system/` must not be hand-edited
+- `clusters/<cluster>/flux-system/` must not be hand-edited
 - no `LOG.md`, changelogs, architecture docs, per-task files, migration plans, or TODO inventories
 
 Return:

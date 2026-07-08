@@ -1,6 +1,6 @@
 # EXAMPLE ONLY — copy to cloudflare-api-token.sops.yaml, fill in your real token, then encrypt:
-#   cp infrastructure/configs/cert-manager/overlays/core/cloudflare-api-token.sops.yaml.example \
-#      infrastructure/configs/cert-manager/overlays/core/cloudflare-api-token.sops.yaml
+#   cp infrastructure/configs/cert-manager/overlays/shared/cloudflare-api-token.sops.yaml.example \
+#      infrastructure/configs/cert-manager/overlays/shared/cloudflare-api-token.sops.yaml
 #   # Delete this comment block from the copy first — SOPS only encrypts
 #   # data/stringData values (see .sops.yaml's encrypted_regex), so comments stay
 #   # in plaintext forever and this "EXAMPLE ONLY" header would be misleading

@@ -18,14 +18,17 @@ It only declares what Flux should reconcile after bootstrap.
 - `.sops.yaml` — SOPS age recipient for encrypting `*.sops.yaml` secrets
 - `scripts/sops.sh` — interactive helper: encrypt, decrypt, edit, and rotate secret files, plus
   "Update Key" to sync `.sops.yaml`'s age recipient to the on-disk private key
-- `apps/` — Flux-managed application workloads
-- `clusters/core/` — Flux Kustomization entry points; Flux reads this directory
+- `apps/` — Flux-managed application workloads; `overlays/shared/` is reused by every cluster
+- `clusters/<cluster>/` — per-cluster Flux Kustomization entry points; each cluster's Flux reads its
+  own directory (`clusters/core/` = production, `clusters/core-stg/` = staging)
 - `infrastructure/controllers/` — platform controllers such as cert-manager
-- `infrastructure/configs/` — platform configuration such as ClusterIssuers, cluster vars, and encrypted runtime secrets
+- `infrastructure/configs/` — platform configuration such as ClusterIssuers, per-cluster cluster vars
+  (`cluster-vars-{public,secret}/<cluster>/`), and encrypted runtime secrets
 - `TASKS.md` — living Now/Next/Someday task tracker for this repo
 
-Flux-generated manifests under `clusters/core/flux-system/` are created and managed by
-`flux bootstrap git` from `homelab-host`. Do not hand-edit them.
+Flux-generated manifests under `clusters/<cluster>/flux-system/` are created and managed by
+`flux bootstrap git` from `homelab-host` (each cluster is bootstrapped separately against its own
+`clusters/<cluster>/` path). Do not hand-edit them.
 
 ## Task Source
 
@@ -76,24 +79,29 @@ AI-attribution trailer.
    verification.
 
 3. **`spec.path` values are repo-root-relative.** Use paths such as
-   `./apps/headlamp/overlays/core`, not paths relative to the manifest file.
+   `./apps/headlamp/overlays/shared`, not paths relative to the manifest file.
 
-4. **`clusters/core/` is the Flux entry point.** Flux's root Kustomization points at
-   `./clusters/core`. Add or update a Flux `Kustomization` manifest there for each workload or
-   infrastructure component that Flux should reconcile.
+4. **`clusters/<cluster>/` is the Flux entry point.** Each cluster's root Kustomization points at its
+   own `./clusters/<cluster>` (`./clusters/core`, `./clusters/core-stg`). Add or update a Flux
+   `Kustomization` manifest under the relevant cluster directory for each workload or infrastructure
+   component that cluster should reconcile.
 
-5. **Every app must be reachable from `clusters/core/`.** Adding files under `apps/` is not enough.
-   A Flux `Kustomization` in `clusters/core/` must point to the app overlay.
+5. **Every app must be reachable from its cluster's `clusters/<cluster>/`.** Adding files under
+   `apps/` is not enough. A Flux `Kustomization` in each cluster that runs the app must point to the
+   app overlay.
 
-6. **Use base/overlay separation.** Shared app resources live in `apps/<name>/base/`. Environment
-   specifics such as ingress, certificates, patches, and substitutions live in
-   `apps/<name>/overlays/core/`.
+6. **Use base/overlay separation.** Shared app resources live in `apps/<name>/base/`. Ingress,
+   certificates, patches, and substitutions live in `apps/<name>/overlays/shared/`, which is fully
+   parameterized (`${domain_apps}`, `${cert_issuer}`) and reused by every cluster. What differs
+   between clusters lives in `infrastructure/configs/cluster-vars-{public,secret}/<cluster>/`, not in
+   the overlay.
 
 7. **Bootstrap is external.** Flux CD is bootstrapped by `homelab-host` using its `flux_auth` and
    `flux_bootstrap` Ansible roles. This repo does not own the bootstrap workflow.
 
-8. **Flux-generated files are not hand-edited.** Do not manually edit `clusters/core/flux-system/`.
-   If Flux must be re-bootstrapped, handle that from `homelab-host`.
+8. **Flux-generated files are not hand-edited.** Do not manually edit
+   `clusters/<cluster>/flux-system/` (`clusters/core/`, `clusters/core-stg/`). If Flux must be
+   re-bootstrapped, handle that from `homelab-host`.
 
 9. **SOPS files need examples.** Every committed `*.sops.yaml` secret should have a matching
    plaintext `*.sops.yaml.example` template with dummy values so the secret can be recreated if the
@@ -110,15 +118,22 @@ A typical app should have:
 - `apps/<name>/base/repository.yaml` — the `HelmRepository`
 - `apps/<name>/base/release.yaml` — the `HelmRelease`
 - `apps/<name>/base/kustomization.yaml`
-- `apps/<name>/overlays/core/kustomization.yaml`
-- `apps/<name>/overlays/core/ingress.yaml` if exposed through Traefik
-- `apps/<name>/overlays/core/certificate.yaml` if it needs a dedicated certificate
-- `clusters/core/<name>-core.yaml`
+- `apps/<name>/overlays/shared/kustomization.yaml`
+- `apps/<name>/overlays/shared/ingress.yaml` if exposed through Traefik
+- `apps/<name>/overlays/shared/certificate.yaml` if it needs a dedicated certificate
+- `clusters/<cluster>/<name>-<cluster>.yaml` for each cluster that runs it
+  (`clusters/core/<name>-core.yaml`, `clusters/core-stg/<name>-core-stg.yaml`)
 
 Use `dependsOn` in the Flux `Kustomization` when the app depends on controllers, configs, secrets,
 or other reconciled resources.
 
 Use `postBuild.substituteFrom` when manifests consume cluster variables from ConfigMaps or Secrets.
+
+**`name` fields mean two different things — don't conflate them.** `dependsOn[].name` references a
+Flux `Kustomization` resource name, which carries the cluster suffix (e.g.
+`cluster-vars-secret-core-stg`). `postBuild.substituteFrom[].name` references the rendered
+Kubernetes object name (`cluster-vars-secret` Secret, `cluster-vars-public` ConfigMap), which is the
+same in every cluster and carries no suffix.
 
 If a Flux `Kustomization` consumes SOPS-encrypted files, include:
 
@@ -132,8 +147,10 @@ Use `infrastructure/controllers/` for installed controllers, such as cert-manage
 Use `infrastructure/configs/` for configuration consumed by those controllers or shared by apps,
 such as ClusterIssuers, cluster variables, or encrypted runtime secrets.
 
-Controllers and configs should be wired through `clusters/core/` as separate Flux
-`Kustomization` manifests when ordering matters.
+Controllers and configs should be wired through each cluster's `clusters/<cluster>/` as separate
+Flux `Kustomization` manifests when ordering matters. Cluster-shared config (cert-manager overlay,
+app overlays) lives in one `overlays/shared/` directory reused by every cluster; per-cluster values
+live in `infrastructure/configs/cluster-vars-{public,secret}/<cluster>/`.
 
 ## SOPS Secrets
 
@@ -176,8 +193,9 @@ Local checks:
 
 - `git diff --check`
 - `find apps infrastructure clusters -name kustomization.yaml -print`
-- `kustomize build apps/<name>/overlays/core`
-- `kustomize build infrastructure/configs/cert-manager/overlays/core`
+- `kustomize build apps/<name>/overlays/shared`
+- `kustomize build infrastructure/configs/cert-manager/overlays/shared`
+- `kustomize build infrastructure/configs/cluster-vars-public/<cluster>`
 
 SOPS helper:
 
