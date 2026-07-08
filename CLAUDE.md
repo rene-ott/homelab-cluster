@@ -29,8 +29,6 @@ Flux-generated manifests under `clusters/core/flux-system/` are created and mana
 
 ## Task Source
 
-## Task Source
-
 `TASKS.md` at the repo root is the living plan: **Now** = the one thing in flight, **Next** =
 ordered shortlist, **Someday** = unordered ideas and parked future notes. Shipped history lives in
 git — no changelogs or status files.

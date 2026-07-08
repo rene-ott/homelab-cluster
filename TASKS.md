@@ -10,7 +10,9 @@ _(nothing in flight)_
 
 ## Next
 
-_(nothing queued yet)_
+- **Add the new cluster config** — to be specified: app name, chart/`HelmRepository`, ingress
+  host, and any SOPS secrets. Scope it on its own following the App Pattern in `CLAUDE.md`
+  (`apps/<name>/base` + `overlays/core`, wired from `clusters/core/`).
 
 ## Someday
 
